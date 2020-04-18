@@ -66,6 +66,12 @@ func main() {
 		N = append(N, pc)
 	}
 
+	fmt.Println("pagecounts")
+	for _, nn := range N {
+		fmt.Printf(" %d", nn)
+	}
+	fmt.Println("")
+
 	doit := confirm("Make it so, Picard?", 1)
 
 	if doit {
@@ -83,11 +89,27 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		for _, file := range files {
-			fmt.Println(file)
+
+		NumSourceImages := len(files)
+		ImageIndex := 0
+
+		for _, pageCount := range N {
+
+			fmt.Printf("\n-------------------------\n%s(%d)\n--------------------\n", getDocName(), pageCount)
+			for n := 0; n < pageCount; n = n + 1 {
+				fmt.Println(files[ImageIndex%NumSourceImages])
+				ImageIndex = ImageIndex + 1
+			}
+
 		}
+
 	}
 
+}
+
+func getDocName() string {
+	num := fmt.Sprintf("%d", rand.Int())
+	return fmt.Sprintf("ENGI01020-B%s", num[0:5])
 }
 
 /*
