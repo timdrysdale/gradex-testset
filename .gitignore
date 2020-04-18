@@ -9,6 +9,7 @@ iam
 *#
 .#*
 *.jpg
+pdf
 # Test binary, built with `go test -c`
 *.test
 gradex-testset

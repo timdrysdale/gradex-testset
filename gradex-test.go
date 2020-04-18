@@ -25,6 +25,8 @@ import (
 
 	"github.com/bsipos/thist"
 	unicommon "github.com/unidoc/unipdf/v3/common"
+	"github.com/unidoc/unipdf/v3/creator"
+	"github.com/unidoc/unipdf/v3/model/optimize"
 )
 
 func init() {
@@ -93,94 +95,66 @@ func main() {
 		NumSourceImages := len(files)
 		ImageIndex := 0
 
-		for _, pageCount := range N {
-
-			fmt.Printf("\n-------------------------\n%s(%d)\n--------------------\n", getDocName(), pageCount)
-			for n := 0; n < pageCount; n = n + 1 {
-				fmt.Println(files[ImageIndex%NumSourceImages])
-				ImageIndex = ImageIndex + 1
-			}
-
-		}
-
-	}
-
-}
-
-func getDocName() string {
-	num := fmt.Sprintf("%d", rand.Int())
-	return fmt.Sprintf("ENGI01020-B%s", num[0:5])
-}
-
-/*
-
-
-	suffix := filepath.Ext(inputPath)
-
-	// sanity check
-	if suffix != ".pdf" {
-		fmt.Printf("Error: input path must be a .pdf\n")
-		os.Exit(1)
-	}
-
-	// need page count to find the jpeg files again later
-	numPages, err := countPages(inputPath)
-
-	// render to images
-	jpegPath := "./jpg"
-	err = ensureDir(jpegPath)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	basename := strings.TrimSuffix(inputPath, suffix)
-	jpegFileOption := fmt.Sprintf("%s/%s%%04d.jpg", jpegPath, basename)
-
-	err = convertPDFToJPEGs(inputPath, jpegPath, jpegFileOption)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	// convert images to individual pdfs, with form overlay
-
-	pagePath := "./pdf"
-	err = ensureDir(pagePath)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	pageFileOption := fmt.Sprintf("%s/%s%%04d.pdf", pagePath, basename)
-
-	mergePaths := []string{}
-
-	// gs starts indexing at 1
-	for imgIdx := 1; imgIdx <= numPages; imgIdx = imgIdx + 1 {
-
-		// construct image name
-		previousImagePath := fmt.Sprintf(jpegFileOption, imgIdx)
-		pageFilename := fmt.Sprintf(pageFileOption, imgIdx)
-
-		//TODO select Layout to suit landscape or portrait
-		svgLayoutPath := "./test/layout-312pt-static-mark-dynamic-moderate-comment-static-check.svg"
-
-		err := parsesvg.RenderSpread(svgLayoutPath, spreadName, previousImagePath, imgIdx, pageFilename)
+		pagePath := "./pdf"
+		err = ensureDir(pagePath)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		//save the pdf filename for the merge at the end
-		mergePaths = append(mergePaths, pageFilename)
-	}
+		for _, pageCount := range N {
 
-	outputPath := fmt.Sprintf("%s-%s.pdf", basename, spreadName)
-	err = mergePdf(mergePaths, outputPath)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
+			// set up doc
+			c := creator.New()
+			c.SetPageMargins(0, 0, 0, 0) // we're not printing so use the whole page
+			c.SetPageSize(creator.PageSizeA4)
+
+			// add image pages
+			for n := 0; n < pageCount; n = n + 1 {
+
+				imgPath := (files[ImageIndex%NumSourceImages])
+				ImageIndex = ImageIndex + 1
+
+				c.NewPage()
+				img, err := c.NewImageFromFile(imgPath)
+				if err != nil {
+					fmt.Printf("Error opening image file %s: %v", imgPath, err)
+					os.Exit(1)
+				}
+				//img.SetHeight(creator.PageSizeA4.Height)
+				img.ScaleToWidth(210 * creator.PPMM)
+				img.SetPos(0, 0)
+				c.Draw(img) //draw previous image
+
+			}
+			/*		if true {
+						fmt.Printf("\n-------------------------\n%s(%d)\n--------------------\n", getDocName(), pageCount)
+						for n := 0; n < pageCount; n = n + 1 {
+							fmt.Println(files[ImageIndex%NumSourceImages])
+							ImageIndex = ImageIndex + 1
+						}
+					}
+			*/
+
+			c.SetOptimizer(optimize.New(optimize.Options{
+				CombineDuplicateDirectObjects:   true,
+				CombineIdenticalIndirectObjects: true,
+				CombineDuplicateStreams:         true,
+				CompressStreams:                 true,
+				UseObjectStreams:                true,
+				ImageQuality:                    90,
+				ImageUpperPPI:                   175,
+			}))
+
+			// write to memory
+			outPath := fmt.Sprintf("%s/%s", pagePath, getDocName())
+			c.WriteToFile(outPath)
+
+		}
 	}
 }
-*/
+
+func getDocName() string {
+	num := fmt.Sprintf("%d", rand.Int())
+	return fmt.Sprintf("ENGI01020-B%s.pdf", num[0:5])
+}
